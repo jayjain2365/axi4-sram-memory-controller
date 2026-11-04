@@ -175,9 +175,188 @@ property p_rlast_correct;
     @(posedge clk)
     disable iff (rst)
     (rvalid && rready)
-    |-> (rlast == (read_beats_remaining == 9'd1));
+    |->
+    (rlast == ((rresp == 2'b10) ||
+               (read_beats_remaining == 9'd1)));
 endproperty
 
 assert property (p_rlast_correct)
 else $error("SVA FAIL: RLAST asserted at incorrect read beat");
+
+// =================================================
+// ASSERTION 8: BVALID ONLY AFTER ALL WRITE BEATS
+// =================================================
+
+property p_bvalid_after_write_complete;
+    @(posedge clk)
+    disable iff (rst)
+    bvalid |-> (write_beats_remaining == 9'd0);
+endproperty
+
+assert property (p_bvalid_after_write_complete)
+else $error("SVA FAIL: BVALID asserted before all write beats completed");
+
+
+// =================================================
+// ASSERTION 9: RVALID ONLY WITH OUTSTANDING READ BEAT
+// =================================================
+
+property p_rvalid_with_outstanding_read;
+    @(posedge clk)
+    disable iff (rst)
+    rvalid |-> (read_beats_remaining != 9'd0);
+endproperty
+
+assert property (p_rvalid_with_outstanding_read)
+else $error("SVA FAIL: RVALID asserted without an outstanding read beat");
+
+
+// =================================================
+// ASSERTION 10: VALID WRITE RESPONSE CODE
+// =================================================
+
+property p_bresp_valid;
+    @(posedge clk)
+    disable iff (rst)
+    bvalid |-> ((bresp == 2'b00) || (bresp == 2'b10));
+endproperty
+
+assert property (p_bresp_valid)
+else $error("SVA FAIL: Invalid BRESP value");
+
+
+// =================================================
+// ASSERTION 11: VALID READ RESPONSE CODE
+// =================================================
+
+property p_rresp_valid;
+    @(posedge clk)
+    disable iff (rst)
+    rvalid |-> (rresp == 2'b00);
+endproperty
+
+assert property (p_rresp_valid)
+else $error("SVA FAIL: Invalid RRESP value");
+// =================================================
+// COVERAGE 1: AW CHANNEL STABILITY DURING STALL
+// =================================================
+
+cover property (
+    @(posedge clk)
+    disable iff (rst)
+    (awvalid && !awready)
+    ##1
+    (awvalid && $stable({awaddr, awlen, awsize, awburst}))
+);
+
+// =================================================
+// COVERAGE 2: W CHANNEL STABILITY DURING STALL
+// =================================================
+
+cover property (
+    @(posedge clk)
+    disable iff (rst)
+    (wvalid && !wready)
+    ##1
+    (wvalid && $stable({wdata, wstrb, wlast}))
+);
+
+// =================================================
+// COVERAGE 3: B CHANNEL STABILITY DURING STALL
+// =================================================
+
+cover property (
+    @(posedge clk)
+    disable iff (rst)
+    (bvalid && !bready)
+    ##1
+    (bvalid && $stable(bresp))
+);
+
+// =================================================
+// COVERAGE 4: AR CHANNEL STABILITY DURING STALL
+// =================================================
+
+cover property (
+    @(posedge clk)
+    disable iff (rst)
+    (arvalid && !arready)
+    ##1
+    (arvalid && $stable({araddr, arlen, arsize, arburst}))
+);
+
+// =================================================
+// COVERAGE 5: R CHANNEL STABILITY DURING STALL
+// =================================================
+
+cover property (
+    @(posedge clk)
+    disable iff (rst)
+    (rvalid && !rready)
+    ##1
+    (rvalid && $stable({rdata, rresp, rlast}))
+);
+
+// =================================================
+// COVERAGE 6: CORRECT WLAST
+// =================================================
+
+cover property (
+    @(posedge clk)
+    disable iff (rst)
+    (wvalid && wready) &&
+    (wlast == (write_beats_remaining == 9'd1))
+);
+
+// =================================================
+// COVERAGE 7: CORRECT RLAST
+// =================================================
+
+cover property (
+    @(posedge clk)
+    disable iff (rst)
+    (rvalid && rready) &&
+    (rlast == (read_beats_remaining == 9'd1))
+);
+
+// =================================================
+// COVERAGE 8: BVALID AFTER WRITE COMPLETION
+// =================================================
+
+cover property (
+    @(posedge clk)
+    disable iff (rst)
+    bvalid && (write_beats_remaining == 9'd0)
+);
+
+// =================================================
+// COVERAGE 9: RVALID WITH OUTSTANDING READ
+// =================================================
+
+cover property (
+    @(posedge clk)
+    disable iff (rst)
+    rvalid && (read_beats_remaining != 9'd0)
+);
+
+// =================================================
+// COVERAGE 10: VALID BRESP
+// =================================================
+
+cover property (
+    @(posedge clk)
+    disable iff (rst)
+    bvalid &&
+    ((bresp == 2'b00) || (bresp == 2'b10))
+);
+
+// =================================================
+// COVERAGE 11: VALID RRESP
+// =================================================
+
+cover property (
+    @(posedge clk)
+    disable iff (rst)
+    rvalid && (rresp == 2'b00)
+);
 endmodule
