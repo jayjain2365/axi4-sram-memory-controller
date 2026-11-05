@@ -292,5 +292,3 @@ AXI4-to-SRAM Memory Controller/
 ## Author
 
 **Jay Jain**
-
-GitHub: [jayjain2365](https://github.com/jayjain2365)
